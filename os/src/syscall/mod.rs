@@ -26,6 +26,9 @@ mod process;
 
 use fs::*;
 use process::*;
+
+pub use process::TaskInfo;
+
 /// handle syscall exception with `syscall_id` and other arguments
 pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
     match syscall_id {
