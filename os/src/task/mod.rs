@@ -17,7 +17,7 @@ mod task;
 use crate::config::{MAX_APP_NUM, MAX_SYSCALL_NUM};
 use crate::loader::{get_num_app, init_app_cx};
 use crate::sync::UPSafeCell;
-use crate::timer::get_time;
+use crate::timer::{get_time_ms};
 use lazy_static::*;
 use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
@@ -86,8 +86,10 @@ impl TaskManager {
         let task0 = &mut inner.tasks[0];
         task0.task_status = TaskStatus::Running;
         let next_task_cx_ptr = &task0.task_cx as *const TaskContext;
+
         // 保存第一次调度的时间
-        task0.start_time = get_time();
+        task0.start_time = get_time_ms();
+
         drop(inner);
         let mut _unused = TaskContext::zero_init();
         // before this, we should drop local variables that must be dropped manually
@@ -133,10 +135,14 @@ impl TaskManager {
             let current_task_cx_ptr = &mut inner.tasks[current].task_cx as *mut TaskContext;
             let next_task_cx_ptr = &inner.tasks[next].task_cx as *const TaskContext;
 
-            let next_task_tcb = &mut inner.tasks[current];
+            let next_task_tcb = &mut inner.tasks[next];
 
             if next_task_tcb.start_time == 0 {
-                next_task_tcb.start_time = get_time();
+                next_task_tcb.start_time = get_time_ms();
+                debug!(
+                    "set task = {:#x} start_time = {:#x}",
+                    next, next_task_tcb.start_time
+                );
             }
 
             drop(inner);
@@ -156,6 +162,8 @@ impl TaskManager {
         let curr_task_tcb = &mut inner.tasks[current];
 
         curr_task_tcb.syscall_times[syscall_id] += 1;
+
+        drop(inner);
     }
 
     fn set_task_info(&self, task_info: &mut TaskInfo) {
@@ -163,10 +171,19 @@ impl TaskManager {
         let current = inner.current_task;
         let curr_task_tcb = &mut inner.tasks[current];
 
-        task_info.time = get_time() - curr_task_tcb.start_time;
+        let curr_time = get_time_ms();
+
+        debug!(
+            "task info current = {:#x} curr_time() = {:#x} curr start_time = {:#x}",
+            current, curr_time, curr_task_tcb.start_time
+        );
+
+        task_info.time = curr_time - curr_task_tcb.start_time;
         task_info
             .syscall_times
             .copy_from_slice(&curr_task_tcb.syscall_times);
+
+        drop(inner);
     }
 }
 
