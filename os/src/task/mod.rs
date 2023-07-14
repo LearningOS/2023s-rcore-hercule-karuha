@@ -14,7 +14,7 @@ mod switch;
 #[allow(clippy::module_inception)]
 mod task;
 
-use crate::config::{MAX_APP_NUM, MAX_SYSCALL_NUM};
+use crate::config::MAX_APP_NUM;
 use crate::loader::{get_num_app, init_app_cx};
 use crate::sync::UPSafeCell;
 use crate::timer::get_time_ms;
@@ -57,7 +57,7 @@ lazy_static! {
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
-            syscall_times:[0;MAX_SYSCALL_NUM],
+            syscall_times:[0;5],
             start_time:0
         }; MAX_APP_NUM];
         for (i, task) in tasks.iter_mut().enumerate() {
@@ -161,7 +161,14 @@ impl TaskManager {
         let current = inner.current_task;
         let curr_task_tcb = &mut inner.tasks[current];
 
-        curr_task_tcb.syscall_times[syscall_id] += 1;
+        match syscall_id {
+            64 => curr_task_tcb.syscall_times[0] += 1,
+            93 => curr_task_tcb.syscall_times[1] += 1,
+            124 => curr_task_tcb.syscall_times[2] += 1,
+            169 => curr_task_tcb.syscall_times[3] += 1,
+            410 => curr_task_tcb.syscall_times[4] += 1,
+            _ => {}
+        }
 
         drop(inner);
     }
@@ -180,9 +187,16 @@ impl TaskManager {
 
         unsafe {
             (*task_info).time = curr_time - curr_task_tcb.start_time;
-            (*task_info)
-                .syscall_times
-                .copy_from_slice(&curr_task_tcb.syscall_times);
+            // (*task_info)
+            //     .syscall_times
+            //     .copy_from_slice(&curr_task_tcb.syscall_times);
+
+            (*task_info).syscall_times[64] = curr_task_tcb.syscall_times[0];
+            (*task_info).syscall_times[93] = curr_task_tcb.syscall_times[1];
+            (*task_info).syscall_times[124] = curr_task_tcb.syscall_times[2];
+            (*task_info).syscall_times[169] = curr_task_tcb.syscall_times[3];
+            (*task_info).syscall_times[410] = curr_task_tcb.syscall_times[4];
+
             (*task_info).status = TaskStatus::Running;
         }
 
