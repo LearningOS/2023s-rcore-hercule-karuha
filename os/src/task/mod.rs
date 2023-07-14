@@ -17,7 +17,7 @@ mod task;
 use crate::config::{MAX_APP_NUM, MAX_SYSCALL_NUM};
 use crate::loader::{get_num_app, init_app_cx};
 use crate::sync::UPSafeCell;
-use crate::timer::{get_time_ms};
+use crate::timer::get_time_ms;
 use lazy_static::*;
 use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
@@ -166,7 +166,7 @@ impl TaskManager {
         drop(inner);
     }
 
-    fn set_task_info(&self, task_info: &mut TaskInfo) {
+    fn set_task_info(&self, task_info: *mut TaskInfo) {
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
         let curr_task_tcb = &mut inner.tasks[current];
@@ -178,10 +178,18 @@ impl TaskManager {
             current, curr_time, curr_task_tcb.start_time
         );
 
-        task_info.time = curr_time - curr_task_tcb.start_time;
-        task_info
-            .syscall_times
-            .copy_from_slice(&curr_task_tcb.syscall_times);
+        unsafe {
+            (*task_info).time = curr_time - curr_task_tcb.start_time;
+            (*task_info)
+                .syscall_times
+                .copy_from_slice(&curr_task_tcb.syscall_times);
+            (*task_info).status = TaskStatus::Running;
+        }
+
+        // task_info.time = curr_time - curr_task_tcb.start_time;
+        // task_info
+        //     .syscall_times
+        //     .copy_from_slice(&curr_task_tcb.syscall_times);
 
         drop(inner);
     }
@@ -226,6 +234,6 @@ pub fn syscall_inc(syscall_id: usize) {
 }
 
 /// 设置taskinfo
-pub fn set_task_info(task_info: &mut TaskInfo) {
+pub fn set_task_info(task_info: *mut TaskInfo) {
     TASK_MANAGER.set_task_info(task_info);
 }

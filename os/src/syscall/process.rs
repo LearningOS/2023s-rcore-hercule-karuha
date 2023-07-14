@@ -53,14 +53,6 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
 /// YOUR JOB: Finish sys_task_info to pass testcases
 pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
     trace!("kernel: sys_task_info");
-    let mut task_info = TaskInfo {
-        status: TaskStatus::Running,
-        syscall_times: [0; MAX_SYSCALL_NUM],
-        time: 0,
-    };
-    set_task_info(&mut task_info);
-    unsafe{
-        *_ti = task_info;
-    }
+    set_task_info(_ti);
     0
 }
