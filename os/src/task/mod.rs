@@ -26,7 +26,7 @@ pub use context::TaskContext;
 
 use crate::syscall::TaskInfo;
 
-use crate::timer::get_time_ms;
+use crate::timer::get_time_us;
 
 /// The task manager, where all the tasks are managed.
 ///
@@ -86,7 +86,7 @@ impl TaskManager {
         let next_task_cx_ptr = &next_task.task_cx as *const TaskContext;
 
         // 保存第一次调度的时间
-        next_task.start_time = get_time_ms();
+        next_task.start_time = get_time_us() / 1000;
 
         drop(inner);
         let mut _unused = TaskContext::zero_init();
@@ -155,7 +155,8 @@ impl TaskManager {
             let next_task_tcb = &mut inner.tasks[next];
 
             if next_task_tcb.start_time == 0 {
-                next_task_tcb.start_time = get_time_ms();
+                next_task_tcb.start_time = get_time_us() / 1000;
+
                 debug!(
                     "set task = {:#x} start_time = {:#x}",
                     next, next_task_tcb.start_time
@@ -195,7 +196,8 @@ impl TaskManager {
         let current = inner.current_task;
         let curr_task_tcb = &mut inner.tasks[current];
 
-        let curr_time = get_time_ms();
+        let curr_time = get_time_us() / 1000;
+
 
         debug!(
             "task info current = {:#x} curr_time() = {:#x} curr start_time = {:#x}",
