@@ -2,8 +2,8 @@
 use crate::{
     config::MAX_SYSCALL_NUM,
     task::{
-        change_program_brk, exit_current_and_run_next, suspend_current_and_run_next, TaskStatus, set_task_info,
-    }, timer::get_time_us,
+        change_program_brk, exit_current_and_run_next, suspend_current_and_run_next, TaskStatus, set_task_info, current_user_token,
+    }, timer::{get_time_ms}, mm::translate_ptr,
 };
 
 #[repr(C)]
@@ -43,11 +43,12 @@ pub fn sys_yield() -> isize {
 /// HINT: What if [`TimeVal`] is splitted by two pages ?
 pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
     trace!("kernel: sys_get_time");
-    let us = get_time_us();
+    let ms = get_time_ms();
+    let ktime = translate_ptr(current_user_token(), ts);
     unsafe {
-        *ts = TimeVal {
-            sec: us / 1_000_000,
-            usec: us % 1_000_000,
+        *ktime = TimeVal {
+            sec: ms / 1_000,
+            usec: ms * 1_000,
         };
     }
     0
@@ -57,7 +58,8 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
 /// HINT: What if [`TaskInfo`] is splitted by two pages ?
 pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
     trace!("kernel: sys_task_info");
-    set_task_info(_ti);
+    let kti = translate_ptr(current_user_token(), _ti);
+    set_task_info(kti);
     0
 }
 // YOUR JOB: Implement mmap.
