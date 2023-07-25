@@ -101,6 +101,12 @@ impl PageTable {
             if !pte.is_valid() {
                 let frame = frame_alloc().unwrap();
                 *pte = PageTableEntry::new(frame.ppn, PTEFlags::V);
+
+                debug!(
+                    "ppn {:?} idx {:?} is invaild, create new ppn = {:?}",
+                    ppn, idx, frame.ppn
+                );
+                
                 self.frames.push(frame);
             }
             ppn = pte.ppn();
@@ -186,4 +192,62 @@ pub fn translate_ptr<T>(token: usize, ptr: *const T) -> *mut T {
     let phys_ptr: *mut T = (offset + phys_addr) as *mut T;
 
     phys_ptr
+}
+
+/// 申请内存
+pub fn mmap(token: usize, start_vpn: VirtPageNum, end_vpn: VirtPageNum, port: usize) -> isize {
+    let mut page_table: PageTable = PageTable::from_token(token);
+    let mut flags = PTEFlags::empty();
+    let mut vpn = start_vpn;
+
+    if port & 0b0000_0001 != 0 {
+        flags |= PTEFlags::R;
+    }
+
+    if port & 0b0000_0010 != 0 {
+        flags |= PTEFlags::W;
+    }
+
+    if port & 0b0000_0100 != 0 {
+        flags |= PTEFlags::X;
+    }
+
+    flags |= PTEFlags::U;
+    flags |= PTEFlags::V;
+
+    while vpn != end_vpn {
+        if let Some(pte) = page_table.find_pte(vpn) {
+            debug!("find vpn {:?} pte flag = {:?}", vpn, pte.flags());
+            if pte.is_valid() {
+                debug!("map on already mapped vpn {:?}", vpn);
+                return -1;
+            }
+        }
+        if let Some(frame) = frame_alloc() {
+            let ppn = frame.ppn;
+            debug!(" map vpn {:?} and ppn {:?} flag {:?}", vpn, ppn, flags);
+            page_table.map(vpn, ppn, flags);
+            page_table.frames.push(frame);
+        } else {
+            return -1;
+        }
+        vpn.step();
+    }
+
+    0
+}
+
+/// 释放内存
+pub fn munmap(token: usize, start_vpn: VirtPageNum, end_vpn: VirtPageNum) -> isize {
+    let mut page_table: PageTable = PageTable::from_token(token);
+    let mut vpn = start_vpn;
+    while vpn != end_vpn {
+        if let None = page_table.find_pte(vpn) {
+            debug!("unmap on no map vpn");
+            return -1;
+        }
+        page_table.unmap(vpn);
+        vpn.step();
+    }
+    0
 }

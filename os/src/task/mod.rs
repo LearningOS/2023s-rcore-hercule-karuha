@@ -157,10 +157,10 @@ impl TaskManager {
             if next_task_tcb.start_time == 0 {
                 next_task_tcb.start_time = get_time_us() / 1000;
 
-                debug!(
-                    "set task = {:#x} start_time = {:#x}",
-                    next, next_task_tcb.start_time
-                );
+                // debug!(
+                //     "set task = {:#x} start_time = {:#x}",
+                //     next, next_task_tcb.start_time
+                // );
             }
 
             drop(inner);
@@ -199,10 +199,10 @@ impl TaskManager {
         let curr_time = get_time_us() / 1000;
 
 
-        debug!(
-            "task info current = {:#x} curr_time() = {:#x} curr start_time = {:#x}",
-            current, curr_time, curr_task_tcb.start_time
-        );
+        // debug!(
+        //     "task info current = {:#x} curr_time() = {:#x} curr start_time = {:#x}",
+        //     current, curr_time, curr_task_tcb.start_time
+        // );
 
         unsafe {
             (*task_info).time = curr_time - curr_task_tcb.start_time;
