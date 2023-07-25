@@ -1,10 +1,10 @@
 //! Process management syscalls
 use crate::{
     config::MAX_SYSCALL_NUM,
-    mm::{mmap, munmap, translate_ptr, VirtAddr, VirtPageNum},
+    mm::{translate_ptr, VirtAddr, VirtPageNum},
     task::{
-        change_program_brk, current_user_token, exit_current_and_run_next, set_task_info,
-        suspend_current_and_run_next, TaskStatus,
+        change_program_brk, current_user_token, exit_current_and_run_next, mmap, set_task_info,
+        suspend_current_and_run_next, TaskStatus, munmap,
     },
     timer::get_time_us,
 };
@@ -83,7 +83,7 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     let start_vpn: VirtPageNum = start_vaddr.into();
     let end_vpn: VirtPageNum = (end_vaddr).ceil();
 
-    mmap(current_user_token(), start_vpn, end_vpn, _port)
+    mmap(start_vpn, end_vpn, _port)
 }
 
 // YOUR JOB: Implement munmap.
@@ -101,7 +101,7 @@ pub fn sys_munmap(_start: usize, _len: usize) -> isize {
     let start_vpn: VirtPageNum = start_vaddr.into();
     let end_vpn: VirtPageNum = (end_vaddr).ceil();
 
-    munmap(current_user_token(), start_vpn, end_vpn)
+    munmap(start_vpn, end_vpn)
 }
 /// change data segment size
 pub fn sys_sbrk(size: i32) -> isize {

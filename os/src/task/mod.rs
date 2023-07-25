@@ -15,6 +15,7 @@ mod switch;
 mod task;
 
 use crate::loader::{get_app_data, get_num_app};
+use crate::mm::VirtPageNum;
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
 use alloc::vec::Vec;
@@ -198,7 +199,6 @@ impl TaskManager {
 
         let curr_time = get_time_us() / 1000;
 
-
         // debug!(
         //     "task info current = {:#x} curr_time() = {:#x} curr start_time = {:#x}",
         //     current, curr_time, curr_task_tcb.start_time
@@ -225,6 +225,22 @@ impl TaskManager {
         //     .copy_from_slice(&curr_task_tcb.syscall_times);
 
         drop(inner);
+    }
+
+    /// mmap
+    pub fn mmap(&self, start_vpn: VirtPageNum, end_vpn: VirtPageNum, port: usize) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        let curr_task_tcb = &mut inner.tasks[current];
+        curr_task_tcb.memory_set.mmap(start_vpn, end_vpn, port)
+    }
+
+    /// munmap
+    pub fn munmap(&self, start_vpn: VirtPageNum, end_vpn: VirtPageNum) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        let curr_task_tcb = &mut inner.tasks[current];
+        curr_task_tcb.memory_set.munmap(start_vpn, end_vpn)
     }
 }
 
@@ -284,4 +300,14 @@ pub fn syscall_inc(syscall_id: usize) {
 /// 设置taskinfo
 pub fn set_task_info(task_info: *mut TaskInfo) {
     TASK_MANAGER.set_task_info(task_info);
+}
+
+/// 为当前任务申请内存
+pub fn mmap(start_vpn: VirtPageNum, end_vpn: VirtPageNum, port: usize) -> isize {
+    TASK_MANAGER.mmap(start_vpn, end_vpn, port)
+}
+
+/// 释放内存
+pub fn munmap(start_vpn: VirtPageNum, end_vpn: VirtPageNum) -> isize {
+    TASK_MANAGER.munmap(start_vpn, end_vpn)
 }
