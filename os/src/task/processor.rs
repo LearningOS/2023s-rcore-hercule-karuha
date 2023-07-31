@@ -7,6 +7,7 @@
 use super::__switch;
 use super::{fetch_task, TaskStatus};
 use super::{TaskContext, TaskControlBlock};
+use crate::mm::VirtPageNum;
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
 use alloc::sync::Arc;
@@ -108,4 +109,24 @@ pub fn schedule(switched_task_cx_ptr: *mut TaskContext) {
     unsafe {
         __switch(switched_task_cx_ptr, idle_task_cx_ptr);
     }
+}
+
+/// 为当前任务申请内存
+pub fn mmap(start_vpn: VirtPageNum, end_vpn: VirtPageNum, port: usize) -> isize {
+    let task = current_task().unwrap();
+    let x = task
+        .inner_exclusive_access()
+        .memory_set
+        .mmap(start_vpn, end_vpn, port);
+    x
+}
+
+/// 释放内存
+pub fn munmap(start_vpn: VirtPageNum, end_vpn: VirtPageNum) -> isize {
+    let task = current_task().unwrap();
+    let x = task
+        .inner_exclusive_access()
+        .memory_set
+        .munmap(start_vpn, end_vpn);
+    x
 }

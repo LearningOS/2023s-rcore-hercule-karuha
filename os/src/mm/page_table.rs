@@ -213,3 +213,19 @@ pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
         .unwrap()
         .get_mut()
 }
+
+/// 获取内核态的指针
+pub fn translate_ptr<T>(token: usize, ptr: *const T) -> *mut T {
+    let page_table: PageTable = PageTable::from_token(token);
+
+    let start: usize = ptr as usize;
+    let start_va: VirtAddr = VirtAddr::from(start);
+    let vpn: VirtPageNum = start_va.floor();
+    let ppn: PhysAddr = page_table.translate(vpn).unwrap().ppn().into();
+
+    let offset: usize = start_va.page_offset();
+    let phys_addr: usize = ppn.into();
+    let phys_ptr: *mut T = (offset + phys_addr) as *mut T;
+
+    phys_ptr
+}
