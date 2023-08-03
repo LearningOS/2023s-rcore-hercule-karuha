@@ -23,7 +23,31 @@ impl TaskManager {
     }
     /// Take a process out of the ready queue
     pub fn fetch(&mut self) -> Option<Arc<TaskControlBlock>> {
-        self.ready_queue.pop_front()
+        // self.ready_queue.pop_front()
+        let mut min_stride_tcb: Option<Arc<TaskControlBlock>> = None;
+        let mut min_stride = u16::MAX;
+
+        // Iterate through the ready queue to find the TaskControlBlock with the smallest stride
+        for tcb in &self.ready_queue {
+            let stride = tcb.inner_exclusive_access().stride;
+            if stride < min_stride {
+                min_stride = stride;
+                min_stride_tcb = Some(tcb.clone());
+            }
+        }
+
+        // If we found a TaskControlBlock with the smallest stride, remove it from the ready queue
+        if let Some(tcb) = min_stride_tcb {
+            let index = self
+                .ready_queue
+                .iter()
+                .position(|item| Arc::ptr_eq(item, &tcb));
+            if let Some(index) = index {
+                return self.ready_queue.remove(index);
+            }
+        }
+
+        None
     }
 }
 
