@@ -6,8 +6,8 @@ use crate::{
     loader::get_app_data_by_name,
     mm::{translate_ptr, translated_refmut, translated_str, VirtAddr, VirtPageNum},
     task::{
-        add_task, current_task, current_user_token, exit_current_and_run_next,
-        suspend_current_and_run_next, TaskStatus, mmap, munmap,
+        add_task, current_task, current_user_token, exit_current_and_run_next, mmap, munmap,
+        suspend_current_and_run_next, TaskControlBlock, TaskStatus,
     },
     timer::get_time_us,
 };
@@ -147,7 +147,7 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
 
 // YOUR JOB: Implement mmap.
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
-    trace!("kernel: sys_mmap NOT IMPLEMENTED YET!");
+    trace!("kernel: sys_mmap");
     let start_vaddr: VirtAddr = _start.into();
     if !start_vaddr.aligned() {
         debug!("map fail don't aligned");
@@ -168,7 +168,7 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
 
 // YOUR JOB: Implement munmap.
 pub fn sys_munmap(_start: usize, _len: usize) -> isize {
-    trace!("kernel: sys_munmap NOT IMPLEMENTED YET!");
+    trace!("kernel: sys_munmap");
     let start_vaddr: VirtAddr = _start.into();
     if !start_vaddr.aligned() {
         debug!("unmap fail don't aligned");
@@ -196,10 +196,26 @@ pub fn sys_sbrk(size: i32) -> isize {
 /// YOUR JOB: Implement spawn.
 /// HINT: fork + exec =/= spawn
 pub fn sys_spawn(_path: *const u8) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_spawn NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
+    trace!("kernel:pid[{}] sys_spawn", current_task().unwrap().pid.0);
+    let token = current_user_token();
+    let path = translated_str(token, _path);
+    if let Some(data) = get_app_data_by_name(path.as_str()) {
+        let current_task = current_task().unwrap();
+        let mut parent_inner = current_task.inner_exclusive_access();
+
+        let new_tcb = Arc::new(TaskControlBlock::new(data));
+        let mut inner = new_tcb.inner_exclusive_access();
+
+        inner.parent = Some(Arc::downgrade(&current_task));
+        parent_inner.children.push(new_tcb.clone());
+        drop(inner);
+
+        let pid = new_tcb.pid.0 as isize;
+
+        add_task(new_tcb);
+
+        return pid;
+    }
     -1
 }
 
