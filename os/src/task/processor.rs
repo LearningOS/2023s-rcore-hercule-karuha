@@ -62,9 +62,15 @@ pub fn run_tasks() {
             // access coming task TCB exclusively
             let mut task_inner = task.inner_exclusive_access();
             let next_task_cx_ptr = &task_inner.task_cx as *const TaskContext;
+
+            debug!(
+                "fetch task pid == {} , status == {:?}",
+                task.pid.0, task_inner.task_status
+            );
+
             task_inner.task_status = TaskStatus::Running;
 
-            task_inner.stride += BIG_STRIDE / task_inner.priority as u16;
+            task_inner.stride += BIG_STRIDE / task_inner.priority as u32;
 
             // release coming task_inner manually
             drop(task_inner);

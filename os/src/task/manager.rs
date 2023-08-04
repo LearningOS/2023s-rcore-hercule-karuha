@@ -25,7 +25,7 @@ impl TaskManager {
     pub fn fetch(&mut self) -> Option<Arc<TaskControlBlock>> {
         // self.ready_queue.pop_front()
         let mut min_stride_tcb: Option<Arc<TaskControlBlock>> = None;
-        let mut min_stride = u16::MAX;
+        let mut min_stride = u32::MAX;
 
         // Iterate through the ready queue to find the TaskControlBlock with the smallest stride
         for tcb in &self.ready_queue {
