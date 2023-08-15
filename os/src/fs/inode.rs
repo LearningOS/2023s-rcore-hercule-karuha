@@ -4,7 +4,8 @@
 //!
 //! `UPSafeCell<OSInodeInner>` -> `OSInode`: for static `ROOT_INODE`,we
 //! need to wrap `OSInodeInner` into `UPSafeCell`
-use super::File;
+
+use super::{File, StatMode};
 use crate::drivers::BLOCK_DEVICE;
 use crate::mm::UserBuffer;
 use crate::sync::UPSafeCell;
@@ -124,6 +125,27 @@ pub fn open_file(name: &str, flags: OpenFlags) -> Option<Arc<OSInode>> {
     }
 }
 
+/// link
+pub fn link(old_name: &str, new_name: &str) -> isize {
+    let return_value = ROOT_INODE.link(old_name, new_name);
+    if return_value == 0 {
+        let inode = ROOT_INODE.find(old_name).unwrap();
+        inode.link_inc();
+    }
+    return_value
+}
+
+/// unlink
+pub fn unlink(name: &str) -> isize {
+    if let Some(inode) = ROOT_INODE.find(name) {
+        inode.link_dec()
+    } else {
+        return -1;
+    }
+
+    ROOT_INODE.unlink(name)
+}
+
 impl File for OSInode {
     fn readable(&self) -> bool {
         self.readable
@@ -154,5 +176,13 @@ impl File for OSInode {
             total_write_size += write_size;
         }
         total_write_size
+    }
+    fn get_stat(&self, _stat: &mut super::Stat) -> isize {
+        let inner = self.inner.exclusive_access();
+        _stat.dev = 0;
+        _stat.ino = 0;
+        _stat.mode = StatMode::FILE;
+        _stat.nlink = inner.inode.link_num();
+        0
     }
 }
