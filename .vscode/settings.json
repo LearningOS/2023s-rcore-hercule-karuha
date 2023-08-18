@@ -10,4 +10,5 @@
     // "rust-analyzer.cargo.features": [
     //     "board_qemu"
     // ]
+    "rust-analyzer.files.excludeDirs":["/home/karuha/rust-project/2023s-rcore-hercule-karuha/easy-fs-fuse"]
 }
