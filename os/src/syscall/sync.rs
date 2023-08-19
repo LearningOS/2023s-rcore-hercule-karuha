@@ -52,6 +52,8 @@ pub fn sys_mutex_create(blocking: bool) -> isize {
         id as isize
     } else {
         process_inner.mutex_list.push(mutex);
+        process_inner.mutex_need[0].push(0);
+        process_inner.mutex_alloc[0].push(0);
         process_inner.mutex_list.len() as isize - 1
     }
 }
@@ -125,6 +127,8 @@ pub fn sys_semaphore_create(res_count: usize) -> isize {
         process_inner
             .semaphore_list
             .push(Some(Arc::new(Semaphore::new(res_count))));
+        process_inner.semaphore_alloc[0].push(0);
+        process_inner.semaphore_need[0].push(0);
         process_inner.semaphore_list.len() - 1
     };
     id as isize
