@@ -81,10 +81,10 @@ pub fn sys_mutex_lock(mutex_id: usize) -> isize {
     let process = current_process();
     let mut process_inner = process.inner_exclusive_access();
 
-    process_inner.mutex_need[tid][mutex_id] += 1;
-    let mut found = false;
     if process_inner.is_dead_lock_detect_enabled() {
         debug!("start dead lock detect");
+        process_inner.mutex_need[tid][mutex_id] += 1;
+        let mut found = false;
         for (_tid, is_finish) in process_inner.finished.iter().enumerate() {
             if *is_finish {
                 debug!("tid[{}] finished", _tid);
@@ -121,10 +121,9 @@ pub fn sys_mutex_lock(mutex_id: usize) -> isize {
                 }
             }
         }
-    }
-
-    if !found {
-        return -0xDEAD;
+        if !found {
+            return -0xDEAD;
+        }
     }
 
     let mutex = Arc::clone(process_inner.mutex_list[mutex_id].as_ref().unwrap());
@@ -135,8 +134,9 @@ pub fn sys_mutex_lock(mutex_id: usize) -> isize {
 
     let process = current_process();
     let mut process_inner = process.inner_exclusive_access();
-
-    process_inner.mutex_need[tid][mutex_id] -= 1;
+    if process_inner.is_dead_lock_detect_enabled() {
+        process_inner.mutex_need[tid][mutex_id] -= 1;
+    }
     0
 }
 /// mutex unlock syscall
@@ -265,7 +265,6 @@ pub fn sys_semaphore_down(sem_id: usize) -> isize {
                         .as_ref()
                         .unwrap()
                         .sem_count();
-                    
 
                     let mut res_num = sem_count;
                     if res_num < 0 {
