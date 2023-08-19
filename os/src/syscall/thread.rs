@@ -6,7 +6,7 @@ use crate::{
 use alloc::{sync::Arc, vec};
 /// thread create syscall
 pub fn sys_thread_create(entry: usize, arg: usize) -> isize {
-    trace!(
+    debug!(
         "kernel:pid[{}] tid[{}] sys_thread_create",
         current_task().unwrap().process.upgrade().unwrap().getpid(),
         current_task()
@@ -37,16 +37,35 @@ pub fn sys_thread_create(entry: usize, arg: usize) -> isize {
     let mut process_inner = process.inner_exclusive_access();
 
     // update resource matrix
-    let mutex_num = process_inner.mutex_need[0].len();
-    let semaphore_num = process_inner.semaphore_need.len();
+    let mutex_num = match process_inner.mutex_need.is_empty() {
+        true => 0,
+        false => process_inner.mutex_need[0].len(),
+    };
+
+    let semaphore_num = match process_inner.semaphore_need.is_empty() {
+        true => 0,
+        false => process_inner.semaphore_need[0].len(),
+    };
 
     process_inner.mutex_need.push(vec![0; mutex_num]);
     process_inner.mutex_alloc.push(vec![0; mutex_num]);
 
-    process_inner.semaphore_need.push(vec![0; semaphore_num]);
-    process_inner.semaphore_alloc.push(vec![0; semaphore_num]);
+    let zeros_vector = vec![0; semaphore_num];
+
+    // debug!("zeros_vector.len()=={}", zeros_vector.len());
+
+    process_inner.semaphore_need.push(zeros_vector.clone());
+
+    process_inner.semaphore_alloc.push(zeros_vector.clone());
 
     process_inner.finished.push(false);
+
+    // debug!(
+    //     "process_inner.semaphore_need[{}].len()=={},semaphore_num=={}",
+    //     new_task_tid,
+    //     process_inner.semaphore_need[new_task_tid].len(),
+    //     semaphore_num
+    // );
 
     // add new thread to current process
     let tasks = &mut process_inner.tasks;
