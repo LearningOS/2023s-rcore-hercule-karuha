@@ -273,7 +273,7 @@ pub fn sys_semaphore_down(sem_id: usize) -> isize {
 
                     debug!(
                         "tid=={},sem_id=={},need = {:?},count = {:?}",
-                        _tid, _sem_id, *need, sem_count
+                        _tid, _sem_id, *need, res_num
                     );
 
                     if *need <= res_num {
