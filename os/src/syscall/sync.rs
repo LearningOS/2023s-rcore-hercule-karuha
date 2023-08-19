@@ -249,7 +249,7 @@ pub fn sys_semaphore_down(sem_id: usize) -> isize {
     let mut found = false;
     if process_inner.is_dead_lock_detect_enabled() {
         for (_tid, is_finish) in process_inner.finished.iter().enumerate() {
-            if *is_finish {
+            if *is_finish || _tid == 0 {
                 // debug!("tid[{}] finished", _tid);
                 continue;
             } else {
@@ -264,7 +264,7 @@ pub fn sys_semaphore_down(sem_id: usize) -> isize {
                     if res_num < 0 {
                         res_num = 0;
                     }
-                    
+
                     debug!(
                         "tid=={},sem_id=={},need = {:?},count = {:?}",
                         _tid, _sem_id, *need, sem_count
@@ -286,17 +286,17 @@ pub fn sys_semaphore_down(sem_id: usize) -> isize {
                 }
             }
         }
+        if !found {
+            debug!(
+                "kernel:pid[{}] tid[{}] sys_semaphore_down fail",
+                current_task().unwrap().process.upgrade().unwrap().getpid(),
+                tid
+            );
+            return -0xDEAD;
+        }
     }
 
     drop(process_inner);
-    if !found {
-        debug!(
-            "kernel:pid[{}] tid[{}] sys_semaphore_down fail",
-            current_task().unwrap().process.upgrade().unwrap().getpid(),
-            tid
-        );
-        return -0xDEAD;
-    }
 
     debug!(
         "kernel:pid[{}] tid[{}] sys_semaphore_down success",
