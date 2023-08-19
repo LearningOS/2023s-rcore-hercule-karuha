@@ -202,20 +202,22 @@ pub fn sys_semaphore_create(res_count: usize) -> isize {
 }
 /// semaphore up syscall
 pub fn sys_semaphore_up(sem_id: usize) -> isize {
+    let tid = current_task()
+        .unwrap()
+        .inner_exclusive_access()
+        .res
+        .as_ref()
+        .unwrap()
+        .tid;
     trace!(
         "kernel:pid[{}] tid[{}] sys_semaphore_up",
         current_task().unwrap().process.upgrade().unwrap().getpid(),
-        current_task()
-            .unwrap()
-            .inner_exclusive_access()
-            .res
-            .as_ref()
-            .unwrap()
-            .tid
+        tid
     );
     let process = current_process();
-    let process_inner = process.inner_exclusive_access();
+    let mut process_inner = process.inner_exclusive_access();
     let sem = Arc::clone(process_inner.semaphore_list[sem_id].as_ref().unwrap());
+    process_inner.finished[tid] = true;
     drop(process_inner);
     sem.up();
     0
@@ -249,12 +251,16 @@ pub fn sys_semaphore_down(sem_id: usize) -> isize {
     let mut found = false;
     if process_inner.is_dead_lock_detect_enabled() {
         for (_tid, is_finish) in process_inner.finished.iter().enumerate() {
-            if *is_finish || _tid == 0 {
+            if *is_finish {
                 // debug!("tid[{}] finished", _tid);
                 continue;
             } else {
                 let mut ok = true;
                 for (_sem_id, need) in process_inner.semaphore_need[_tid].iter().enumerate() {
+                    if _sem_id == 0 {
+                        continue;
+                    }
+
                     let sem_count = process_inner.semaphore_list[_sem_id]
                         .as_ref()
                         .unwrap()
