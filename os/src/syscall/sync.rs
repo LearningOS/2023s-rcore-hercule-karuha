@@ -230,9 +230,10 @@ pub fn sys_semaphore_down(sem_id: usize) -> isize {
         .unwrap()
         .tid;
     debug!(
-        "kernel:pid[{}] tid[{}] sys_semaphore_down",
+        "kernel:pid[{}] tid[{}] sys_semaphore_down semid[{}]",
         current_task().unwrap().process.upgrade().unwrap().getpid(),
-        tid
+        tid,
+        sem_id
     );
     let process = current_process();
     let mut process_inner = process.inner_exclusive_access();
@@ -253,22 +254,23 @@ pub fn sys_semaphore_down(sem_id: usize) -> isize {
                 continue;
             } else {
                 let mut ok = true;
-                for need in &process_inner.semaphore_need[_tid] {
-                    // debug!(
-                    //     "need = {:?}, count = {:?}",
-                    //     *need,
-                    //     process_inner.semaphore_list[sem_id]
-                    //         .as_ref()
-                    //         .unwrap()
-                    //         .sem_count()
-                    // );
+                for (_sem_id, need) in process_inner.semaphore_need[_tid].iter().enumerate() {
+                    let sem_count = process_inner.semaphore_list[_sem_id]
+                        .as_ref()
+                        .unwrap()
+                        .sem_count();
 
-                    if *need
-                        <= process_inner.semaphore_list[sem_id]
-                            .as_ref()
-                            .unwrap()
-                            .sem_count()
-                    {
+                    let mut res_num = sem_count;
+                    if res_num < 0 {
+                        res_num = 0;
+                    }
+                    
+                    debug!(
+                        "tid=={},sem_id=={},need = {:?},count = {:?}",
+                        _tid, _sem_id, *need, sem_count
+                    );
+
+                    if *need <= res_num {
                         continue;
                     } else {
                         ok = false;
@@ -278,6 +280,7 @@ pub fn sys_semaphore_down(sem_id: usize) -> isize {
 
                 if ok {
                     found = true;
+                    break;
                 } else {
                     continue;
                 }
@@ -287,14 +290,30 @@ pub fn sys_semaphore_down(sem_id: usize) -> isize {
 
     drop(process_inner);
     if !found {
+        debug!(
+            "kernel:pid[{}] tid[{}] sys_semaphore_down fail",
+            current_task().unwrap().process.upgrade().unwrap().getpid(),
+            tid
+        );
         return -0xDEAD;
     }
+
+    debug!(
+        "kernel:pid[{}] tid[{}] sys_semaphore_down success",
+        current_task().unwrap().process.upgrade().unwrap().getpid(),
+        tid
+    );
 
     sem.down();
     let process = current_process();
     let mut process_inner = process.inner_exclusive_access();
 
     process_inner.semaphore_need[tid][sem_id] -= 1;
+    debug!(
+        "kernel:pid[{}] tid[{}] sys_semaphore_down return",
+        current_task().unwrap().process.upgrade().unwrap().getpid(),
+        tid
+    );
     0
 }
 /// condvar create syscall
