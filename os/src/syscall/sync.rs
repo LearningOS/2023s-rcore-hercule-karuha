@@ -265,6 +265,7 @@ pub fn sys_semaphore_down(sem_id: usize) -> isize {
                         .as_ref()
                         .unwrap()
                         .sem_count();
+                    
 
                     let mut res_num = sem_count;
                     if res_num < 0 {
